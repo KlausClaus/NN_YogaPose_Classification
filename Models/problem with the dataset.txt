@@ -1,0 +1,11 @@
+- "it looks like we don't support this file format." 
+'D:\\Term 3 2024\\COMP9444\\COMP9444_project\\Dataset\\Yoga-82\\yoga_dataset_links\\Akarna_Dhanurasana/478.jpg'
+'http://nicholchaseyoga.com/wp-content/uploads/2013/10/IMG_2857.jpg'
+Reason: Invalid image due to webpage not exist anymore
+
+- "This site can't be reached" 
+Error downloading Akarna_Dhanurasana/82.jpg from https://www.devayoga.ie/images/asana_297.jpg: HTTPSConnectionPool(host='www.devayoga.ie', port=443): Max retries exceeded with url: /images/asana_297.jpg (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x0000026ECABB6C50>: Failed to resolve 'www.devayoga.ie' ([Errno 11001] getaddrinfo failed)"))
+
+Error downloading Bharadvaja's_Twist_pose_or_Bharadvajasana_I_/249.jpg from http://lookforthewoman.com/wp-content/uploads/2014/06/ann-twist.jpg: HTTPConnectionPool(host='lookforthewoman.com', port=80): Max retries exceeded with url: /wp-content/uploads/2014/06/ann-twist.jpg (Caused by NameResolutionError("<urllib3.connection.HTTPConnection object at 0x0000026ECC207B90>: Failed to resolve 'lookforthewoman.com' ([Errno 11002] getaddrinfo failed)"))
+
+- some photos are not valid so cannot be skeletonised

@@ -1,0 +1,306 @@
+version 2:58AM 12/11/2024
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.transforms as transforms
+from torchvision.transforms import functional as F
+import torchvision.datasets as datasets
+from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+# Load dataset
+input_folder = r'D:\Term 3 2024\COMP9444\COMP9444_project\Dataset\Yoga-82\yoga_dataset_links'
+
+# Data transformations (resize, normalize, and augment)
+transform = transforms.Compose([
+    transforms.Resize((75, 75)),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+])
+
+# Load the full dataset from the directory
+dataset = datasets.ImageFolder(root=input_folder, transform=transform)
+
+
+# Set the train-test split ratio
+train_ratio = 0.8
+train_size = int(train_ratio * len(dataset))
+test_size = len(dataset) - train_size
+
+# Split the dataset into training and testing sets
+train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+
+# DataLoader for training and testing sets
+batch_size = 64
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size)
+
+
+
+# Define the YogaConvo2d model based on the paper
+class YogaConvo2d(nn.Module):
+    def __init__(self, num_classes):
+        super(YogaConvo2d, self).__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.dropout1 = nn.Dropout(0.25)
+        
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.dropout2 = nn.Dropout(0.25)
+        
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(256 * 9 * 9, 1024)
+        self.fc2 = nn.Linear(1024, num_classes)
+        self.dropout3 = nn.Dropout(0.5)
+
+    def forward(self, x):
+        x = torch.relu(self.conv1(x))
+        x = self.pool(x)
+        x = self.dropout1(x)
+        
+        x = torch.relu(self.conv2(x))
+        x = self.pool(x)
+        x = self.dropout2(x)
+
+        x = torch.relu(self.conv3(x))
+        x = self.pool(x)
+        x = self.dropout2(x)
+
+        x = self.flatten(x)
+        x = torch.relu(self.fc1(x))
+        x = self.dropout3(x)
+        x = self.fc2(x)
+        #return torch.softmax(x, dim=1)
+        return x
+
+
+# Define data transformations
+transform = transforms.Compose([
+    transforms.Resize((75, 75)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5,), (0.5,))
+])
+
+# Initialize model, loss function, and optimizer
+num_classes = len(dataset.classes)
+model = YogaConvo2d(num_classes=num_classes)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Training and Testing Loops (similar to previous implementation)
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    print("CUDA is available. Using GPU:", torch.cuda.get_device_name(0))
+else:
+    device = torch.device("cpu")
+    print("CUDA is not available. Using CPU.")
+
+model.to(device)
+
+# Training function
+def train(model, train_loader, optimizer, criterion):
+    model.train()
+    total, correct = 0, 0
+    for images, labels in train_loader:
+        images, labels = images.to(device), labels.to(device)  # Move to device
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        
+        _, preds = torch.max(outputs, 1)
+        correct += (preds == labels).sum().item()
+        total += labels.size(0)
+    
+    accuracy = 100 * correct / total
+    print(f"Training Accuracy: {accuracy:.6f}%")
+    return accuracy
+
+# Testing function
+def test(model, test_loader, criterion):
+    model.eval()
+    total, correct = 0, 0
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)  # Move to device
+            outputs = model(images)
+            _, preds = torch.max(outputs, 1)
+            correct += (preds == labels).sum().item()
+            total += labels.size(0)
+    
+    accuracy = 100 * correct / total
+    print(f"Test Accuracy: {accuracy:.6f}%")
+    return accuracy
+
+print(model)
+
+# Training loop
+epochs = 50
+for epoch in range(epochs):
+    print(f"Epoch {epoch + 1}/{epochs}")
+    train_accuracy = train(model, train_loader, optimizer, criterion)
+    if (epoch + 1) % 10 == 0:
+        test_accuracy = test(model, test_loader, criterion)
+
+
+
+c:\Users\User\AppData\Local\Programs\Python\Python311\Lib\site-packages\threadpoolctl.py:1214: RuntimeWarning: 
+Found Intel OpenMP ('libiomp') and LLVM OpenMP ('libomp') loaded at
+the same time. Both libraries are known to be incompatible and this
+can cause random crashes or deadlocks on Linux when loaded in the
+same Python program.
+Using threadpoolctl may cause crashes or deadlocks. For more
+information and possible workarounds, please see
+  warnings.warn(msg, RuntimeWarning)
+  warnings.warn(msg, RuntimeWarning)
+CUDA is available. Using GPU: NVIDIA GeForce GTX 1050
+YogaConvo2d(
+  (conv1): Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+  (dropout1): Dropout(p=0.25, inplace=False)
+  (conv2): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  (conv3): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+  (dropout2): Dropout(p=0.25, inplace=False)
+  (flatten): Flatten(start_dim=1, end_dim=-1)
+  (fc1): Linear(in_features=20736, out_features=1024, bias=True)
+  (fc2): Linear(in_features=1024, out_features=82, bias=True)
+  (dropout3): Dropout(p=0.5, inplace=False)
+)
+Epoch 1/50
+c:\Users\User\AppData\Local\Programs\Python\Python311\Lib\site-packages\PIL\Image.py:1054: UserWarning: Palette images with Transparency expressed in bytes should be converted to RGBA images
+  warnings.warn(
+c:\Users\User\AppData\Local\Programs\Python\Python311\Lib\site-packages\PIL\TiffImagePlugin.py:935: UserWarning: Truncated File Read
+  warnings.warn(str(msg))
+Training Accuracy: 4.126344%
+Epoch 2/50
+Training Accuracy: 10.793011%
+Epoch 3/50
+Training Accuracy: 20.430108%
+Epoch 4/50
+Training Accuracy: 27.264785%
+Epoch 5/50
+Training Accuracy: 33.057796%
+Epoch 6/50
+Training Accuracy: 36.834677%
+Epoch 7/50
+Training Accuracy: 40.598118%
+Epoch 8/50
+Training Accuracy: 43.602151%
+Epoch 9/50
+Training Accuracy: 47.043011%
+Epoch 10/50
+Training Accuracy: 49.321237%
+Test Accuracy: 45.591398%
+Epoch 11/50
+Training Accuracy: 51.747312%
+Epoch 12/50
+Training Accuracy: 54.865591%
+Epoch 13/50
+Training Accuracy: 56.498656%
+Epoch 14/50
+Training Accuracy: 58.978495%
+Epoch 15/50
+Training Accuracy: 60.188172%
+Epoch 16/50
+Training Accuracy: 62.090054%
+Epoch 17/50
+Training Accuracy: 64.025538%
+Epoch 18/50
+Training Accuracy: 64.932796%
+Epoch 19/50
+Training Accuracy: 67.701613%
+Epoch 20/50
+Training Accuracy: 68.333333%
+Test Accuracy: 48.467742%
+Epoch 21/50
+Training Accuracy: 69.361559%
+Epoch 22/50
+Training Accuracy: 70.672043%
+Epoch 23/50
+Training Accuracy: 70.672043%
+Epoch 23/50
+Epoch 23/50
+Training Accuracy: 71.102151%
+Epoch 24/50
+Training Accuracy: 72.822581%
+Epoch 25/50
+Training Accuracy: 73.286290%
+Epoch 26/50
+Training Accuracy: 71.102151%
+Epoch 24/50
+Training Accuracy: 72.822581%
+Epoch 25/50
+Training Accuracy: 73.286290%
+Epoch 26/50
+Epoch 24/50
+Training Accuracy: 72.822581%
+Epoch 25/50
+Training Accuracy: 73.286290%
+Epoch 26/50
+Training Accuracy: 72.822581%
+Epoch 25/50
+Training Accuracy: 73.286290%
+Epoch 26/50
+Training Accuracy: 74.744624%
+Epoch 27/50
+Training Accuracy: 75.181452%
+Epoch 28/50
+Training Accuracy: 76.162634%
+Epoch 29/50
+Training Accuracy: 76.713710%
+Epoch 30/50
+Training Accuracy: 77.251344%
+Test Accuracy: 49.274194%
+Epoch 31/50
+c:\Users\User\AppData\Local\Programs\Python\Python311\Lib\site-packages\PIL\Image.py:1054: UserWarning: Palette images with Transparency expressed in bytes should be converted to RGBA images
+  warnings.warn(
+c:\Users\User\AppData\Local\Programs\Python\Python311\Lib\site-packages\PIL\TiffImagePlugin.py:935: UserWarning: Truncated File Read
+  warnings.warn(str(msg))
+Training Accuracy: 78.010753%
+Epoch 32/50
+Training Accuracy: 78.474462%
+Epoch 33/50
+Training Accuracy: 79.106183%
+Epoch 34/50
+Training Accuracy: 79.885753%
+Epoch 35/50
+Training Accuracy: 80.194892%
+Epoch 36/50
+Training Accuracy: 81.384409%
+Epoch 37/50
+Training Accuracy: 81.250000%
+Epoch 38/50
+Training Accuracy: 81.512097%
+Epoch 39/50
+Training Accuracy: 81.827957%
+Epoch 40/50
+Training Accuracy: 82.419355%
+Test Accuracy: 49.408602%
+Epoch 41/50
+Training Accuracy: 82.305108%
+Epoch 42/50
+Training Accuracy: 83.750000%
+Epoch 43/50
+Training Accuracy: 82.983871%
+Epoch 44/50
+Training Accuracy: 83.494624%
+Epoch 45/50
+Training Accuracy: 83.373656%
+Epoch 46/50
+Training Accuracy: 84.690860%
+Epoch 47/50
+Training Accuracy: 84.791667%
+Epoch 48/50
+Training Accuracy: 84.348118%
+Epoch 49/50
+Training Accuracy: 85.315860%
+Epoch 50/50
+Training Accuracy: 84.825269%
+Test Accuracy: 48.575269%
+PS D:\Term 3 2024\COMP9444\COMP9444_project\Dataset\Yoga-82\Renhua code 2> 

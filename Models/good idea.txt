@@ -1,0 +1,91 @@
+Including the connections between landmarks as additional information for the neural network could indeed improve its understanding of the structural relationships within poses, potentially leading to better classification accuracy. Here are some ways to encode these connections effectively:
+
+1. Distance Encoding (Pairwise Distances Between Connected Landmarks)
+Calculate the Euclidean distance between each pair of connected landmarks based on mp_pose.POSE_CONNECTIONS.
+By adding these distances as additional features, you provide information about the spatial relationships between landmarks, which can be crucial for understanding pose structure.
+This approach transforms each connection into a single scalar (distance) and could help the network learn relative sizes and proportions in the pose.
+Implementation:
+
+python
+Copy code
+import math
+
+distances = []
+for connection in mp_pose.POSE_CONNECTIONS:
+    start_idx, end_idx = connection
+    # Compute the Euclidean distance
+    distance = math.sqrt(
+        (x_coords[start_idx] - x_coords[end_idx]) ** 2 +
+        (y_coords[start_idx] - y_coords[end_idx]) ** 2 +
+        (z_coords[start_idx] - z_coords[end_idx]) ** 2
+    )
+    distances.append(distance)
+Append distances to your input vector for each pose, so the network has both the raw coordinates and the distances between connected landmarks.
+Total input size will be 99 (x, y, z for 33 landmarks) + number of connections.
+2. Angle Encoding (Joint Angles Between Connected Landmarks)
+For each triplet of connected landmarks, calculate the angle between them. This approach is often useful in human pose estimation, as angles between body parts (like elbow or knee angles) carry significant information about the pose.
+You can use the dot product to find the angle between two vectors formed by three consecutive landmarks.
+Implementation:
+
+python
+Copy code
+import numpy as np
+
+angles = []
+for connection1, connection2 in zip(mp_pose.POSE_CONNECTIONS[:-1], mp_pose.POSE_CONNECTIONS[1:]):
+    start1, end1 = connection1
+    start2, end2 = connection2
+    # Ensure connections share a common point
+    if end1 == start2:
+        vector1 = np.array([x_coords[start1] - x_coords[end1],
+                            y_coords[start1] - y_coords[end1],
+                            z_coords[start1] - z_coords[end1]])
+        vector2 = np.array([x_coords[start2] - x_coords[end2],
+                            y_coords[start2] - y_coords[end2],
+                            z_coords[start2] - z_coords[end2]])
+        # Calculate the cosine of the angle
+        cos_angle = np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
+        angle = np.arccos(np.clip(cos_angle, -1.0, 1.0))  # Clip to avoid numerical errors
+        angles.append(angle)
+Append angles to your input vector. These angles can add rich information about the relative orientation of limbs.
+Total input size will be 99 (x, y, z for 33 landmarks) + number of angles.
+3. Adjacency Matrix (Graph-Based Approach)
+Treat the pose as a graph, where each landmark is a node, and the connections are edges. Encode this as an adjacency matrix, where an entry is 1 if there’s a connection between two landmarks, and 0 otherwise.
+This adjacency matrix can be used alongside coordinates in graph-based neural networks, like Graph Neural Networks (GNNs), which are particularly good at processing structural relationships.
+Implementation:
+
+python
+Copy code
+# Initialize adjacency matrix
+num_landmarks = 33
+adjacency_matrix = np.zeros((num_landmarks, num_landmarks))
+
+for connection in mp_pose.POSE_CONNECTIONS:
+    start_idx, end_idx = connection
+    adjacency_matrix[start_idx, end_idx] = 1
+    adjacency_matrix[end_idx, start_idx] = 1  # For undirected edges
+Use Case: This matrix can be directly fed to a GNN, along with landmark coordinates, allowing the network to learn pose structures in a relational manner.
+4. Combining Coordinates and Connections
+You can combine these encodings for a richer input representation. For example:
+Feed the x, y, z coordinates directly as input.
+Add the distances or angles as additional features in the input layer.
+For more complex architectures, use GNNs that leverage the adjacency matrix alongside the coordinates.
+Summary of Encoding Strategies
+Distances: Simple, effective, and easily combined with x, y, z coordinates in an MLP or CNN.
+Angles: Encodes relative orientations, valuable for understanding poses but may require careful selection of triplets.
+Adjacency Matrix: Suitable for GNNs, capturing structural relationships directly.
+Suggested Approach for Feedforward or CNN Models
+For a standard feedforward neural network or CNN, using distances or angles along with x, y, z coordinates is a straightforward and effective way to include landmark connections. You don’t need to re-standardize these features if you’re appending them to normalized coordinates, as their values will inherently represent relative proportions.
+
+
+
+
+
+
+
+
+
+
+
+
+

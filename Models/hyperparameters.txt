@@ -1,0 +1,28 @@
+Renhua model:
+
+Here is a list of the hyperparameters considered in the script:
+
+1. **Learning Rate (`lr`)**: Set to 0.001 in the Adam optimizer (`optimizer = optim.Adam(model.parameters(), lr=0.001)`).
+   
+2. **Batch Size (`batch_size`)**: Set to 16 (`batch_size = 16`), which determines how many samples are processed at once during training and testing.
+
+3. **Epochs (`epochs`)**: Set to 50 (`epochs = 50`), which indicates the number of times the entire dataset is passed through the model during training.
+
+4. **Dropout Rates**:
+   - `dropout1`: Set to 0.25, used after the first pooling layer.
+   - `dropout2`: Set to 0.25, used after the second pooling layer.
+   - `dropout3`: Set to 0.5, used before the final fully connected layer.
+
+5. **Network Architecture Parameters**:
+   - Number of filters in the 3D convolutional layers:
+     - `conv1`: 64 filters
+     - `conv2`: 128 filters
+     - `conv3`: 256 filters
+   - Kernel Size in Convolution Layers: Fixed to 3 (`kernel_size=3`).
+   - Pooling Size: Set to 2 for each `MaxPool3d` layer (`self.pool = nn.MaxPool3d(2, 2)`).
+
+6. **Train-Test Split Ratio (`train_ratio`)**: Defined as 0.8 (`train_ratio = 0.8`), meaning 80% of the dataset is used for training and 20% for testing.
+
+7. **Loss Function (`criterion`)**: Using `nn.CrossEntropyLoss()` for multi-class classification.
+
+Each of these hyperparameters can significantly affect the model's performance, and you might consider tuning them individually to achieve better results.
